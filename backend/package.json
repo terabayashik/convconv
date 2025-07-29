@@ -1,9 +1,14 @@
 {
-  "name": "backend",
-  "module": "index.ts",
+  "name": "@convconv/backend",
+  "version": "1.0.0",
+  "module": "src/main.ts",
   "type": "module",
   "scripts": {
+    "dev": "bun --hot src/main.ts",
     "check": "biome check --write ."
+  },
+  "dependencies": {
+    "@convconv/shared": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.1.2",

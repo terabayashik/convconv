@@ -1,0 +1,22 @@
+{
+  "name": "convconv",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "check": "bun run --filter '*' check",
+    "backend:dev": "cd backend && bun run src/main.ts",
+    "frontend:dev": "cd frontend && bun dev"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.1.2",
+    "typescript": "^5.8.3",
+    "zod": "^3.24.1"
+  }
+}
