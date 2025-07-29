@@ -5,8 +5,10 @@
   "exports": {
     "./types/ffmpeg": "./src/types/ffmpeg.ts",
     "./types/api": "./src/types/api.ts",
+    "./types/config": "./src/types/config.ts",
     "./schemas/ffmpeg": "./src/schemas/ffmpeg.ts",
-    "./schemas/api": "./src/schemas/api.ts"
+    "./schemas/api": "./src/schemas/api.ts",
+    "./schemas/config": "./src/schemas/config.ts"
   },
   "scripts": {
     "check": "biome check --write ."

@@ -74,6 +74,18 @@ import { ConvertRequestSchema } from "@convconv/shared/schemas/api";
 import { ConvertRequest, FFmpegCommand } from "@convconv/shared";
 ```
 
+## Configuration
+
+The backend uses a `config.json` file for runtime configuration. This file is:
+- **NOT included in git** (listed in .gitignore)
+- **Auto-generated on first run** from `config.example.json` or with defaults
+- **Customizable** for each environment
+
+To customize configuration:
+1. Run the backend once to generate `config.json`
+2. Edit `backend/config.json` as needed
+3. Changes take effect on next restart
+
 ## Important Notes
 
 1. **Always use Bun** instead of npm/yarn/pnpm for package management
@@ -82,3 +94,4 @@ import { ConvertRequest, FFmpegCommand } from "@convconv/shared";
 4. **Frontend uses Vite** for development and building - hot module replacement is enabled by default
 5. **Use Zod schemas** for all API payloads and external data validation
 6. **No function declarations** - always use arrow functions: `const myFunc = () => {}`
+7. **Config files** - `config.json` is environment-specific and not tracked in git

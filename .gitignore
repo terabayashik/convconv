@@ -48,3 +48,6 @@ Thumbs.db
 
 # Bun
 .bun/
+
+# Config files
+backend/config.json
