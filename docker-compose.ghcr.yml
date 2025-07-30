@@ -1,7 +1,5 @@
 services:
   convconv:
-    # GitHub Container Registry のイメージを使用
-    # あなたのGitHubユーザー名/組織名に置き換えてください
     image: ghcr.io/terabayashik/convconv:latest
     container_name: convconv
     ports:
