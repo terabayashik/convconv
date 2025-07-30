@@ -6,14 +6,10 @@ FROM oven/bun:1 AS frontend-builder
 # Build arguments for cache invalidation
 ARG BUILDKIT_INLINE_CACHE=1
 
-# Install Node.js for Vite/Rollup compatibility (multi-platform aware)
+# Install Node.js 24 for Vite/Rollup compatibility (multi-platform aware)
 RUN apt-get update && \
     apt-get install -y curl && \
-    if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
-        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -; \
-    else \
-        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -; \
-    fi && \
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
