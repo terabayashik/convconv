@@ -44,6 +44,10 @@ temp
 # Documentation
 *.md
 !README.md
+!CLAUDE.md
+!backend/CLAUDE.md
+!frontend/CLAUDE.md
+!shared/CLAUDE.md
 
 # Docker files
 Dockerfile
@@ -52,6 +56,7 @@ docker-compose.yml
 
 # Backend specific
 backend/uploads
+backend/outputs
 backend/config.json
 
 # Development files
