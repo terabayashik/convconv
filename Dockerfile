@@ -35,9 +35,9 @@ RUN bun run build
 # Production stage
 FROM oven/bun:1
 
-# Install FFmpeg
+# Install FFmpeg and curl for healthcheck
 RUN apt-get update && \
-    apt-get install -y ffmpeg && \
+    apt-get install -y ffmpeg curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -68,6 +68,23 @@ ENV PORT=3000
 
 # Expose port
 EXPOSE 3000
+
+# Create a Docker-specific config that binds to all interfaces
+RUN echo '{\
+  "server": {\
+    "port": 3000,\
+    "host": "0.0.0.0"\
+  },\
+  "storage": {\
+    "uploadDir": "./uploads",\
+    "outputDir": "./outputs",\
+    "retentionHours": 24,\
+    "cleanupIntervalMinutes": 60\
+  },\
+  "ffmpeg": {\
+    "defaultThreads": 4\
+  }\
+}' > /app/backend/config.json
 
 # Start backend server
 WORKDIR /app/backend
