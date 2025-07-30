@@ -9,7 +9,9 @@
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "@convconv/shared": "workspace:*"
+    "@convconv/shared": "workspace:*",
+    "@hono/node-server": "^1.17.1",
+    "hono": "^4.8.10"
   },
   "devDependencies": {
     "@biomejs/biome": "2.1.2",

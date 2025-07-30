@@ -25,6 +25,7 @@ const AUDIO_FORMATS = [
 ];
 
 const VIDEO_RESOLUTIONS = [
+  { value: "same", label: "入力と同じ" },
   { value: "1920x1080", label: "1080p (1920x1080)" },
   { value: "1280x720", label: "720p (1280x720)" },
   { value: "854x480", label: "480p (854x480)" },
@@ -35,7 +36,7 @@ const VIDEO_RESOLUTIONS = [
 export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [outputFormat, setOutputFormat] = useState<string>("");
-  const [resolution, setResolution] = useState<string>("");
+  const [resolution, setResolution] = useState<string>("same");
   const [customWidth, setCustomWidth] = useState<number | undefined>();
   const [customHeight, setCustomHeight] = useState<number | undefined>();
   const [ffmpegPreview, setFfmpegPreview] = useState<string>("");
@@ -50,7 +51,7 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
     const options: Record<string, unknown> = {};
 
     // Add resolution if it's a video format
-    if (!AUDIO_FORMATS.find((f) => f.value === outputFormat) && resolution) {
+    if (!AUDIO_FORMATS.find((f) => f.value === outputFormat) && resolution && resolution !== "same") {
       if (resolution === "custom" && customWidth && customHeight) {
         options.scale = `${customWidth}x${customHeight}`;
       } else if (resolution !== "custom") {
@@ -105,7 +106,7 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
         // Fallback to client-side preview
         let cmd = `ffmpeg -i "${selectedFile.name}"`;
 
-        if (isVideoFormat && resolution) {
+        if (isVideoFormat && resolution && resolution !== "same") {
           if (resolution === "custom" && customWidth && customHeight) {
             cmd += ` -vf scale=${customWidth}:${customHeight}`;
           } else if (resolution !== "custom") {
@@ -169,7 +170,12 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
               value={outputFormat}
               onChange={(value) => {
                 setOutputFormat(value || "");
-                setResolution("");
+                // Keep resolution as "same" for video formats
+                if (value && !AUDIO_FORMATS.find((f) => f.value === value)) {
+                  setResolution("same");
+                } else {
+                  setResolution("");
+                }
               }}
             />
 

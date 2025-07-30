@@ -1,5 +1,6 @@
 import { ConvertRequestSchema } from "@convconv/shared/schemas/api";
 import type { ApiResponse, ConvertResponse } from "@convconv/shared/types/api";
+import type { Context } from "hono";
 import type { FFmpegService } from "../services/ffmpeg";
 import type { JobService } from "../services/jobs";
 import type { StorageService } from "../services/storage";
@@ -13,69 +14,52 @@ export class ApiRouter {
     private wsManager: WebSocketManager,
   ) {}
 
-  handleUpload = async (request: Request): Promise<Response> => {
+  handleUpload = async (c: Context): Promise<Response> => {
     try {
-      const formData = await request.formData();
+      const formData = await c.req.formData();
       const file = formData.get("file");
 
       if (!file || !(file instanceof File)) {
-        return Response.json(
+        return c.json(
           {
             success: false,
             error: "No file provided",
           } as ApiResponse<never>,
-          {
-            status: 400,
-            headers: {
-              "Access-Control-Allow-Origin": "*",
-            },
-          },
+          400,
         );
       }
 
       const filePath = await this.storage.saveUploadedFile(file);
 
-      return Response.json(
-        {
-          success: true,
-          data: { filePath },
-        } as ApiResponse<{ filePath: string }>,
-        {
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
+      return c.json({
+        success: true,
+        data: { filePath },
+      } as ApiResponse<{ filePath: string }>);
     } catch (error) {
       console.error("Upload error:", error);
-      return Response.json(
+      return c.json(
         {
           success: false,
           error: "Upload failed",
         } as ApiResponse<never>,
-        {
-          status: 500,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
+        500,
       );
     }
   };
 
-  handleConvert = async (request: Request): Promise<Response> => {
+  handleConvert = async (c: Context): Promise<Response> => {
     try {
-      const body = await request.json();
+      const body = await c.req.json();
       const convertRequest = ConvertRequestSchema.parse(body);
 
       // Assume file is a path string for server-side processing
       if (typeof convertRequest.file !== "string") {
-        return Response.json(
+        return c.json(
           {
             success: false,
             error: "Invalid file reference",
           } as ApiResponse<never>,
-          { status: 400 },
+          400,
         );
       }
 
@@ -86,58 +70,50 @@ export class ApiRouter {
       // Start conversion in background
       this.processConversion(job.jobId, convertRequest.options);
 
-      return Response.json(
-        {
-          success: true,
-          data: {
-            jobId: job.jobId,
-            status: job.status,
-          },
-        } as ApiResponse<ConvertResponse>,
-        {
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-          },
+      return c.json({
+        success: true,
+        data: {
+          jobId: job.jobId,
+          status: job.status,
         },
-      );
+      } as ApiResponse<ConvertResponse>);
     } catch (error) {
       console.error("Convert error:", error);
-      return Response.json(
+      return c.json(
         {
           success: false,
           error: "Conversion request failed",
         } as ApiResponse<never>,
-        { status: 500 },
+        500,
       );
     }
   };
 
-  handleJobStatus = async (request: Request): Promise<Response> => {
-    const url = new URL(request.url);
-    const jobId = url.pathname.split("/").pop();
+  handleJobStatus = async (c: Context): Promise<Response> => {
+    const jobId = c.req.param("jobId");
 
     if (!jobId) {
-      return Response.json(
+      return c.json(
         {
           success: false,
           error: "Job ID required",
         } as ApiResponse<never>,
-        { status: 400 },
+        400,
       );
     }
 
     const job = this.jobs.getJob(jobId);
     if (!job) {
-      return Response.json(
+      return c.json(
         {
           success: false,
           error: "Job not found",
         } as ApiResponse<never>,
-        { status: 404 },
+        404,
       );
     }
 
-    return Response.json({
+    return c.json({
       success: true,
       data: {
         jobId: job.jobId,
@@ -148,42 +124,113 @@ export class ApiRouter {
     } as ApiResponse<ConvertResponse>);
   };
 
-  handleDownload = async (request: Request): Promise<Response> => {
-    const url = new URL(request.url);
-    const jobId = url.pathname.split("/").pop();
+  handleDownload = async (c: Context): Promise<Response> => {
+    const jobId = c.req.param("jobId");
 
     if (!jobId) {
-      return new Response("Job ID required", { status: 400 });
+      return c.text("Job ID required", 400);
     }
 
     const job = this.jobs.getJob(jobId);
     if (!job || job.status !== "completed") {
-      return new Response("File not ready", { status: 404 });
+      return c.text("File not ready", 404);
     }
 
     const file = Bun.file(job.outputPath);
-    return new Response(file, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    const filename = job.outputPath.split("/").pop() || "download";
+
+    // Set appropriate headers for file download
+    c.header("Content-Type", "application/octet-stream");
+    c.header("Content-Disposition", `attachment; filename="${filename}"`);
+
+    return c.body(await file.arrayBuffer());
   };
 
-  handlePreview = async (request: Request): Promise<Response> => {
+  handleConvertDirect = async (c: Context): Promise<Response> => {
     try {
-      const body = await request.json();
+      const formData = await c.req.formData();
+      const file = formData.get("file");
+      const outputFormat = formData.get("outputFormat");
+      const options = formData.get("options");
+
+      // Validate required fields
+      if (!file || !(file instanceof File)) {
+        return c.json(
+          {
+            success: false,
+            error: "No file provided",
+          } as ApiResponse<never>,
+          400,
+        );
+      }
+
+      if (!outputFormat || typeof outputFormat !== "string") {
+        return c.json(
+          {
+            success: false,
+            error: "Output format required",
+          } as ApiResponse<never>,
+          400,
+        );
+      }
+
+      // Parse options if provided
+      let parsedOptions: Record<string, unknown> | undefined;
+      if (options && typeof options === "string") {
+        try {
+          parsedOptions = JSON.parse(options);
+        } catch {
+          return c.json(
+            {
+              success: false,
+              error: "Invalid options JSON",
+            } as ApiResponse<never>,
+            400,
+          );
+        }
+      }
+
+      // Save uploaded file
+      const filePath = await this.storage.saveUploadedFile(file);
+
+      // Create conversion job
+      const outputPath = this.storage.getOutputPath(filePath, outputFormat);
+      const job = this.jobs.createJob(filePath, outputPath);
+
+      // Start conversion in background
+      this.processConversion(job.jobId, parsedOptions);
+
+      return c.json({
+        success: true,
+        data: {
+          jobId: job.jobId,
+          status: job.status,
+        },
+      } as ApiResponse<ConvertResponse>);
+    } catch (error) {
+      console.error("Direct convert error:", error);
+      return c.json(
+        {
+          success: false,
+          error: "Direct conversion failed",
+        } as ApiResponse<never>,
+        500,
+      );
+    }
+  };
+
+  handlePreview = async (c: Context): Promise<Response> => {
+    try {
+      const body = await c.req.json();
       const convertRequest = ConvertRequestSchema.parse(body);
 
       if (typeof convertRequest.file !== "string") {
-        return Response.json(
+        return c.json(
           {
             success: false,
             error: "Invalid file reference",
           },
-          {
-            status: 400,
-            headers: { "Access-Control-Allow-Origin": "*" },
-          },
+          400,
         );
       }
 
@@ -194,26 +241,18 @@ export class ApiRouter {
         options: convertRequest.options,
       });
 
-      return Response.json(
-        {
-          success: true,
-          data: { command },
-        },
-        {
-          headers: { "Access-Control-Allow-Origin": "*" },
-        },
-      );
+      return c.json({
+        success: true,
+        data: { command },
+      });
     } catch (error) {
       console.error("Preview error:", error);
-      return Response.json(
+      return c.json(
         {
           success: false,
           error: "Preview failed",
         },
-        {
-          status: 500,
-          headers: { "Access-Control-Allow-Origin": "*" },
-        },
+        500,
       );
     }
   };
