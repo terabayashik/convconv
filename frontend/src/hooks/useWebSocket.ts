@@ -9,7 +9,7 @@ export const useWebSocket = (
   onComplete: (data: { downloadUrl: string }) => void,
   onError: (error: { error: string }) => void,
 ) => {
-  const callbackRef = useRef<(message: unknown) => void>();
+  const callbackRef = useRef<((message: unknown) => void) | undefined>(undefined);
 
   useEffect(() => {
     if (!jobId) return;

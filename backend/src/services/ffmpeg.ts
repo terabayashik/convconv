@@ -89,6 +89,15 @@ export class FFmpegService {
     });
   };
 
+  buildCommand = (params: { inputFile: string; outputFile: string; options?: Record<string, unknown> }): string => {
+    const args = this.buildArgs({
+      inputFile: params.inputFile,
+      outputFile: params.outputFile,
+      options: params.options,
+    });
+    return `${this.ffmpegPath} ${args.map((arg) => (arg.includes(" ") ? `"${arg}"` : arg)).join(" ")}`;
+  };
+
   private buildArgs = (command: FFmpegCommand): string[] => {
     const args: string[] = [
       "-i",
@@ -98,7 +107,39 @@ export class FFmpegService {
       "-y", // Overwrite output file
     ];
 
-    if (command.options?.codec) {
+    // Handle video scaling
+    if (command.options?.scale) {
+      const scale = command.options.scale;
+      if (typeof scale === "string" && scale.match(/^\d+x\d+$/)) {
+        const [width, height] = scale.split("x");
+        args.push("-vf", `scale=${width}:${height}`);
+      }
+    }
+
+    // Auto-detect codec based on output format
+    const outputExt = command.outputFile.split(".").pop()?.toLowerCase();
+    if (!command.options?.codec) {
+      switch (outputExt) {
+        case "mp4":
+          args.push("-c:v", "libx264", "-c:a", "aac");
+          break;
+        case "webm":
+          args.push("-c:v", "libvpx-vp9", "-c:a", "libopus");
+          break;
+        case "mp3":
+          args.push("-c:a", "libmp3lame", "-q:a", "2");
+          break;
+        case "aac":
+          args.push("-c:a", "aac", "-b:a", "192k");
+          break;
+        case "wav":
+          args.push("-c:a", "pcm_s16le");
+          break;
+        case "flac":
+          args.push("-c:a", "flac");
+          break;
+      }
+    } else if (command.options?.codec) {
       args.push("-c", command.options.codec);
     }
 

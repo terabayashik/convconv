@@ -40,7 +40,7 @@ const App = () => {
     },
   );
 
-  const handleFileSelect = async (file: File, outputFormat: string) => {
+  const handleFileSelect = async (file: File, outputFormat: string, options?: Record<string, unknown>) => {
     try {
       setIsConverting(true);
       setStatus("processing");
@@ -53,7 +53,7 @@ const App = () => {
       }
 
       // Start conversion
-      const convertResponse = await startConversion(uploadResponse.data.filePath, outputFormat);
+      const convertResponse = await startConversion(uploadResponse.data.filePath, outputFormat, options);
       if (!convertResponse.success || !convertResponse.data) {
         throw new Error(convertResponse.error || "Conversion failed");
       }

@@ -45,3 +45,25 @@ export const getJobStatus = async (jobId: string): Promise<ApiResponse<ConvertRe
 export const downloadFile = (jobId: string): string => {
   return `${API_BASE_URL}/download/${jobId}`;
 };
+
+export const getFFmpegPreview = async (
+  filePath: string,
+  outputFormat: string,
+  options?: Record<string, unknown>,
+): Promise<ApiResponse<{ command: string }>> => {
+  const request: ConvertRequest = {
+    file: filePath,
+    outputFormat,
+    options,
+  };
+
+  const response = await fetch(`${API_BASE_URL}/preview`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  return response.json();
+};

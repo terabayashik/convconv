@@ -60,6 +60,10 @@ const server = Bun.serve({
       return api.handleDownload(request);
     }
 
+    if (url.pathname === "/api/preview" && request.method === "POST") {
+      return api.handlePreview(request);
+    }
+
     // Handle CORS for frontend development
     if (request.method === "OPTIONS") {
       return new Response(null, {

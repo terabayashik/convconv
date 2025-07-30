@@ -84,15 +84,22 @@ export class ApiRouter {
       const job = this.jobs.createJob(convertRequest.file, outputPath);
 
       // Start conversion in background
-      this.processConversion(job.jobId);
+      this.processConversion(job.jobId, convertRequest.options);
 
-      return Response.json({
-        success: true,
-        data: {
-          jobId: job.jobId,
-          status: job.status,
+      return Response.json(
+        {
+          success: true,
+          data: {
+            jobId: job.jobId,
+            status: job.status,
+          },
+        } as ApiResponse<ConvertResponse>,
+        {
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+          },
         },
-      } as ApiResponse<ConvertResponse>);
+      );
     } catch (error) {
       console.error("Convert error:", error);
       return Response.json(
@@ -162,7 +169,56 @@ export class ApiRouter {
     });
   };
 
-  private processConversion = async (jobId: string) => {
+  handlePreview = async (request: Request): Promise<Response> => {
+    try {
+      const body = await request.json();
+      const convertRequest = ConvertRequestSchema.parse(body);
+
+      if (typeof convertRequest.file !== "string") {
+        return Response.json(
+          {
+            success: false,
+            error: "Invalid file reference",
+          },
+          {
+            status: 400,
+            headers: { "Access-Control-Allow-Origin": "*" },
+          },
+        );
+      }
+
+      const outputPath = this.storage.getOutputPath(convertRequest.file, convertRequest.outputFormat);
+      const command = this.ffmpeg.buildCommand({
+        inputFile: convertRequest.file,
+        outputFile: outputPath,
+        options: convertRequest.options,
+      });
+
+      return Response.json(
+        {
+          success: true,
+          data: { command },
+        },
+        {
+          headers: { "Access-Control-Allow-Origin": "*" },
+        },
+      );
+    } catch (error) {
+      console.error("Preview error:", error);
+      return Response.json(
+        {
+          success: false,
+          error: "Preview failed",
+        },
+        {
+          status: 500,
+          headers: { "Access-Control-Allow-Origin": "*" },
+        },
+      );
+    }
+  };
+
+  private processConversion = async (jobId: string, options?: Record<string, unknown>) => {
     const job = this.jobs.startJob(jobId);
     if (!job) return;
 
@@ -178,6 +234,7 @@ export class ApiRouter {
       {
         inputFile: job.inputPath,
         outputFile: job.outputPath,
+        options,
       },
       (progress) => {
         this.jobs.updateProgress(jobId, progress.percent);

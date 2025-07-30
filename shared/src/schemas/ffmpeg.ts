@@ -4,6 +4,7 @@ export const FFmpegOptionsSchema = z.object({
   codec: z.string().optional(),
   bitrate: z.string().optional(),
   format: z.string().optional(),
+  scale: z.string().optional(),
   customArgs: z.array(z.string()).optional(),
 });
 

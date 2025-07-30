@@ -12,7 +12,8 @@
     "./schemas/websocket": "./src/schemas/websocket.ts"
   },
   "scripts": {
-    "check": "biome check --write ."
+    "check": "biome check --write .",
+    "tsc": "tsc --noEmit"
   },
   "dependencies": {
     "zod": "^3.24.1"

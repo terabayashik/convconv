@@ -8,6 +8,7 @@ export interface FFmpegOptions {
   codec?: string;
   bitrate?: string;
   format?: string;
+  scale?: string;
   customArgs?: string[];
 }
 
