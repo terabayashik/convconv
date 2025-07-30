@@ -1,0 +1,23 @@
+services:
+  convconv:
+    # GitHub Container Registry のイメージを使用
+    # あなたのGitHubユーザー名/組織名に置き換えてください
+    image: ghcr.io/terabayashik/convconv:latest
+    container_name: convconv
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Persist uploads directory
+      - ./uploads:/app/backend/uploads
+      # Optional: mount config.json for custom configuration
+      # - ./config.json:/app/backend/config.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
