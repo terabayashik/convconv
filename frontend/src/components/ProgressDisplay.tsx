@@ -1,5 +1,5 @@
-import { Stack, Progress, Text, Paper, Group, Button } from "@mantine/core";
-import { FFmpegProgress } from "@convconv/shared/types/ffmpeg";
+import type { FFmpegProgress } from "@convconv/shared/types/ffmpeg";
+import { Button, Group, Paper, Progress, Stack, Text } from "@mantine/core";
 
 interface ProgressDisplayProps {
   progress: FFmpegProgress | null;
@@ -41,12 +41,7 @@ export const ProgressDisplay = ({ progress, status, downloadUrl, onReset }: Prog
               変換が完了しました！
             </Text>
             <Group>
-              <Button
-                component="a"
-                href={downloadUrl}
-                download
-                variant="filled"
-              >
+              <Button component="a" href={downloadUrl} download variant="filled">
                 ダウンロード
               </Button>
               <Button variant="light" onClick={onReset}>
@@ -61,9 +56,7 @@ export const ProgressDisplay = ({ progress, status, downloadUrl, onReset }: Prog
             <Text c="red" size="lg" fw={500}>
               変換に失敗しました
             </Text>
-            <Button onClick={onReset}>
-              もう一度試す
-            </Button>
+            <Button onClick={onReset}>もう一度試す</Button>
           </Stack>
         )}
       </Stack>

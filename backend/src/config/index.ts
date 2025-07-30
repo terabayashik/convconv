@@ -1,6 +1,6 @@
-import { AppConfig } from "@convconv/shared/types/config";
-import { AppConfigSchema } from "@convconv/shared/schemas/config";
 import { existsSync } from "node:fs";
+import { AppConfigSchema } from "@convconv/shared/schemas/config";
+import type { AppConfig } from "@convconv/shared/types/config";
 
 const CONFIG_FILE = "./config.json";
 const EXAMPLE_CONFIG_FILE = "./config.example.json";

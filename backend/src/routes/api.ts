@@ -1,57 +1,65 @@
-import { ApiResponse } from "@convconv/shared/types/api";
 import { ConvertRequestSchema } from "@convconv/shared/schemas/api";
-import { StorageService } from "../services/storage";
-import { JobService } from "../services/jobs";
-import { FFmpegService } from "../services/ffmpeg";
-import { WebSocketManager } from "../utils/websocket";
-import { config } from "../config";
+import type { ApiResponse, ConvertResponse } from "@convconv/shared/types/api";
+import type { FFmpegService } from "../services/ffmpeg";
+import type { JobService } from "../services/jobs";
+import type { StorageService } from "../services/storage";
+import type { WebSocketManager } from "../utils/websocket";
 
 export class ApiRouter {
   constructor(
     private storage: StorageService,
     private jobs: JobService,
     private ffmpeg: FFmpegService,
-    private wsManager: WebSocketManager
+    private wsManager: WebSocketManager,
   ) {}
 
   handleUpload = async (request: Request): Promise<Response> => {
     try {
       const formData = await request.formData();
       const file = formData.get("file");
-      
+
       if (!file || !(file instanceof File)) {
-        return Response.json({
-          success: false,
-          error: "No file provided",
-        } as ApiResponse<any>, { 
-          status: 400,
+        return Response.json(
+          {
+            success: false,
+            error: "No file provided",
+          } as ApiResponse<never>,
+          {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+            },
+          },
+        );
+      }
+
+      const filePath = await this.storage.saveUploadedFile(file);
+
+      return Response.json(
+        {
+          success: true,
+          data: { filePath },
+        } as ApiResponse<{ filePath: string }>,
+        {
           headers: {
             "Access-Control-Allow-Origin": "*",
-          }
-        });
-      }
-      
-      const filePath = await this.storage.saveUploadedFile(file);
-      
-      return Response.json({
-        success: true,
-        data: { filePath },
-      } as ApiResponse<{ filePath: string }>, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        }
-      });
+          },
+        },
+      );
     } catch (error) {
       console.error("Upload error:", error);
-      return Response.json({
-        success: false,
-        error: "Upload failed",
-      } as ApiResponse<any>, { 
-        status: 500,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        }
-      });
+      return Response.json(
+        {
+          success: false,
+          error: "Upload failed",
+        } as ApiResponse<never>,
+        {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+          },
+        },
+      );
     }
   };
 
@@ -59,60 +67,69 @@ export class ApiRouter {
     try {
       const body = await request.json();
       const convertRequest = ConvertRequestSchema.parse(body);
-      
+
       // Assume file is a path string for server-side processing
       if (typeof convertRequest.file !== "string") {
-        return Response.json({
-          success: false,
-          error: "Invalid file reference",
-        } as ApiResponse<any>, { status: 400 });
+        return Response.json(
+          {
+            success: false,
+            error: "Invalid file reference",
+          } as ApiResponse<never>,
+          { status: 400 },
+        );
       }
-      
-      const outputPath = this.storage.getOutputPath(
-        convertRequest.file,
-        convertRequest.outputFormat
-      );
-      
+
+      const outputPath = this.storage.getOutputPath(convertRequest.file, convertRequest.outputFormat);
+
       const job = this.jobs.createJob(convertRequest.file, outputPath);
-      
+
       // Start conversion in background
       this.processConversion(job.jobId);
-      
+
       return Response.json({
         success: true,
         data: {
           jobId: job.jobId,
           status: job.status,
         },
-      } as ApiResponse<any>);
+      } as ApiResponse<ConvertResponse>);
     } catch (error) {
       console.error("Convert error:", error);
-      return Response.json({
-        success: false,
-        error: "Conversion request failed",
-      } as ApiResponse<any>, { status: 500 });
+      return Response.json(
+        {
+          success: false,
+          error: "Conversion request failed",
+        } as ApiResponse<never>,
+        { status: 500 },
+      );
     }
   };
 
   handleJobStatus = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const jobId = url.pathname.split("/").pop();
-    
+
     if (!jobId) {
-      return Response.json({
-        success: false,
-        error: "Job ID required",
-      } as ApiResponse<any>, { status: 400 });
+      return Response.json(
+        {
+          success: false,
+          error: "Job ID required",
+        } as ApiResponse<never>,
+        { status: 400 },
+      );
     }
-    
+
     const job = this.jobs.getJob(jobId);
     if (!job) {
-      return Response.json({
-        success: false,
-        error: "Job not found",
-      } as ApiResponse<any>, { status: 404 });
+      return Response.json(
+        {
+          success: false,
+          error: "Job not found",
+        } as ApiResponse<never>,
+        { status: 404 },
+      );
     }
-    
+
     return Response.json({
       success: true,
       data: {
@@ -121,32 +138,42 @@ export class ApiRouter {
         progress: job.progress,
         downloadUrl: job.downloadUrl,
       },
-    } as ApiResponse<any>);
+    } as ApiResponse<ConvertResponse>);
   };
 
   handleDownload = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const jobId = url.pathname.split("/").pop();
-    
+
     if (!jobId) {
       return new Response("Job ID required", { status: 400 });
     }
-    
+
     const job = this.jobs.getJob(jobId);
     if (!job || job.status !== "completed") {
       return new Response("File not ready", { status: 404 });
     }
-    
+
     const file = Bun.file(job.outputPath);
-    return new Response(file);
+    return new Response(file, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   };
 
   private processConversion = async (jobId: string) => {
     const job = this.jobs.startJob(jobId);
     if (!job) return;
-    
-    this.wsManager.broadcast(jobId, { type: "progress", data: { progress: 0 } });
-    
+
+    // Initial progress
+    this.wsManager.broadcastProgress(jobId, {
+      percent: 0,
+      time: "00:00:00",
+      bitrate: "0kbps",
+      speed: "0x",
+    });
+
     const result = await this.ffmpeg.execute(
       {
         inputFile: job.inputPath,
@@ -154,26 +181,17 @@ export class ApiRouter {
       },
       (progress) => {
         this.jobs.updateProgress(jobId, progress.percent);
-        this.wsManager.broadcast(jobId, {
-          type: "progress",
-          data: progress,
-        });
-      }
+        this.wsManager.broadcastProgress(jobId, progress);
+      },
     );
-    
+
     if (result.success) {
       const downloadUrl = `/api/download/${jobId}`;
       this.jobs.completeJob(jobId, downloadUrl);
-      this.wsManager.broadcast(jobId, {
-        type: "complete",
-        data: { downloadUrl },
-      });
+      this.wsManager.broadcastComplete(jobId, downloadUrl);
     } else {
       this.jobs.failJob(jobId, result.error || "Unknown error");
-      this.wsManager.broadcast(jobId, {
-        type: "error",
-        data: { error: result.error },
-      });
+      this.wsManager.broadcastError(jobId, result.error || "Unknown error");
     }
   };
 }

@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Group, Text, rem, Button, Select, Stack, Paper } from "@mantine/core";
+import { Button, Group, Paper, rem, Select, Stack, Text } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
-import { IconUpload, IconX, IconFile } from "@tabler/icons-react";
+import { IconFile, IconUpload, IconX } from "@tabler/icons-react";
+import { useState } from "react";
 
 interface FileUploadProps {
   onFileSelect: (file: File, outputFormat: string) => void;
@@ -47,11 +47,7 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
       <Dropzone
         onDrop={handleDrop}
         maxSize={5 * 1024 ** 3} // 5GB
-        accept={[
-          ...Object.values(MIME_TYPES).filter((mime) => 
-            mime.startsWith("video/") || mime.startsWith("audio/")
-          ),
-        ]}
+        accept={[...Object.values(MIME_TYPES).filter((mime) => mime.startsWith("video/") || mime.startsWith("audio/"))]}
         disabled={disabled}
       >
         <Group justify="center" gap="xl" style={{ minHeight: rem(140), pointerEvents: "none" }}>
@@ -62,16 +58,10 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
             />
           </Dropzone.Accept>
           <Dropzone.Reject>
-            <IconX
-              style={{ width: rem(52), height: rem(52), color: "var(--mantine-color-red-6)" }}
-              stroke={1.5}
-            />
+            <IconX style={{ width: rem(52), height: rem(52), color: "var(--mantine-color-red-6)" }} stroke={1.5} />
           </Dropzone.Reject>
           <Dropzone.Idle>
-            <IconFile
-              style={{ width: rem(52), height: rem(52), color: "var(--mantine-color-dimmed)" }}
-              stroke={1.5}
-            />
+            <IconFile style={{ width: rem(52), height: rem(52), color: "var(--mantine-color-dimmed)" }} stroke={1.5} />
           </Dropzone.Idle>
 
           <div>
@@ -91,7 +81,7 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
             <Text size="sm">
               選択されたファイル: <strong>{selectedFile.name}</strong>
             </Text>
-            
+
             <Select
               label="出力形式"
               placeholder="変換形式を選択"
@@ -100,11 +90,7 @@ export const FileUpload = ({ onFileSelect, disabled }: FileUploadProps) => {
               onChange={(value) => setOutputFormat(value || "")}
             />
 
-            <Button
-              onClick={handleConvert}
-              disabled={!outputFormat || disabled}
-              fullWidth
-            >
+            <Button onClick={handleConvert} disabled={!outputFormat || disabled} fullWidth>
               変換開始
             </Button>
           </Stack>

@@ -1,6 +1,7 @@
-import { ApiResponse, ConvertRequest, ConvertResponse } from "@convconv/shared/types/api";
+import type { ApiResponse, ConvertRequest, ConvertResponse } from "@convconv/shared/types/api";
 
-const API_BASE_URL = "http://localhost:3000/api";
+// Use relative URL in production, absolute URL in development
+const API_BASE_URL = import.meta.env.DEV ? "http://localhost:3000/api" : "/api";
 
 export const uploadFile = async (file: File): Promise<ApiResponse<{ filePath: string }>> => {
   const formData = new FormData();
@@ -17,7 +18,7 @@ export const uploadFile = async (file: File): Promise<ApiResponse<{ filePath: st
 export const startConversion = async (
   filePath: string,
   outputFormat: string,
-  options?: Record<string, unknown>
+  options?: Record<string, unknown>,
 ): Promise<ApiResponse<ConvertResponse>> => {
   const request: ConvertRequest = {
     file: filePath,

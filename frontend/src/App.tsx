@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
-import { Container, Title, Stack, MantineProvider } from "@mantine/core";
+import { Container, MantineProvider, Stack, Title } from "@mantine/core";
+import { useEffect, useState } from "react";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
+import type { FFmpegProgress } from "@convconv/shared/types/ffmpeg";
 import { FileUpload } from "./components/FileUpload";
 import { ProgressDisplay } from "./components/ProgressDisplay";
-import { uploadFile, startConversion, downloadFile } from "./services/api";
-import { wsService } from "./services/websocket";
 import { useWebSocket } from "./hooks/useWebSocket";
-import { FFmpegProgress } from "@convconv/shared/types/ffmpeg";
+import { downloadFile, startConversion, uploadFile } from "./services/api";
+import { wsService } from "./services/websocket";
 
 const App = () => {
   const [isConverting, setIsConverting] = useState(false);
@@ -30,16 +30,14 @@ const App = () => {
     (progressData) => {
       setProgress(progressData);
     },
-    (completeData) => {
+    (_completeData) => {
       setStatus("completed");
-      if (completeData.downloadUrl) {
-        setDownloadUrl(downloadFile(jobId!));
-      }
+      setDownloadUrl(downloadFile(jobId || ""));
     },
     (errorData) => {
       setStatus("failed");
       console.error("Conversion error:", errorData);
-    }
+    },
   );
 
   const handleFileSelect = async (file: File, outputFormat: string) => {
@@ -55,10 +53,7 @@ const App = () => {
       }
 
       // Start conversion
-      const convertResponse = await startConversion(
-        uploadResponse.data.filePath,
-        outputFormat
-      );
+      const convertResponse = await startConversion(uploadResponse.data.filePath, outputFormat);
       if (!convertResponse.success || !convertResponse.data) {
         throw new Error(convertResponse.error || "Conversion failed");
       }
@@ -86,16 +81,11 @@ const App = () => {
           <Title order={1} ta="center">
             ConvConv - FFmpeg Converter
           </Title>
-          
+
           {!isConverting ? (
             <FileUpload onFileSelect={handleFileSelect} disabled={isConverting} />
           ) : (
-            <ProgressDisplay
-              progress={progress}
-              status={status}
-              downloadUrl={downloadUrl}
-              onReset={handleReset}
-            />
+            <ProgressDisplay progress={progress} status={status} downloadUrl={downloadUrl} onReset={handleReset} />
           )}
         </Stack>
       </Container>

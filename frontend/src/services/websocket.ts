@@ -1,20 +1,21 @@
-import { FFmpegProgress } from "@convconv/shared/types/ffmpeg";
-
-interface WSMessage {
-  type: "progress" | "complete" | "error" | "subscribe" | "subscribed";
-  jobId: string;
-  data?: any;
-}
+import { WSSubscribeMessageSchema } from "@convconv/shared/schemas/websocket";
 
 export class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectInterval = 5000;
   private shouldReconnect = true;
   private url: string;
-  private listeners: Map<string, Set<(message: WSMessage) => void>> = new Map();
+  private listeners: Map<string, Set<(message: unknown) => void>> = new Map();
 
-  constructor(url = "ws://localhost:3000/ws") {
-    this.url = url;
+  constructor(url?: string) {
+    // Use relative WebSocket URL in production
+    let wsUrl = url;
+    if (!wsUrl) {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = window.location.host;
+      wsUrl = `${protocol}//${host}/ws`;
+    }
+    this.url = wsUrl;
   }
 
   connect = (): Promise<void> => {
@@ -43,8 +44,11 @@ export class WebSocketService {
 
         this.ws.onmessage = (event) => {
           try {
-            const message: WSMessage = JSON.parse(event.data);
-            this.notifyListeners(message.jobId, message);
+            const rawMessage = JSON.parse(event.data);
+            // Pass raw message to listeners for validation
+            if (typeof rawMessage === "object" && rawMessage !== null && "jobId" in rawMessage) {
+              this.notifyListeners(rawMessage.jobId, rawMessage);
+            }
           } catch (error) {
             console.error("Failed to parse WebSocket message:", error);
           }
@@ -63,23 +67,26 @@ export class WebSocketService {
     }
   };
 
-  subscribeToJob = (jobId: string, callback: (message: WSMessage) => void) => {
+  subscribeToJob = (jobId: string, callback: (message: unknown) => void) => {
     // Add listener
     if (!this.listeners.has(jobId)) {
       this.listeners.set(jobId, new Set());
     }
-    this.listeners.get(jobId)!.add(callback);
+    this.listeners.get(jobId)?.add(callback);
 
     // Send subscribe message
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
+      // Validate message before sending
+      const message = WSSubscribeMessageSchema.parse({
         type: "subscribe",
         jobId,
-      }));
+      });
+
+      this.ws.send(JSON.stringify(message));
     }
   };
 
-  unsubscribeFromJob = (jobId: string, callback: (message: WSMessage) => void) => {
+  unsubscribeFromJob = (jobId: string, callback: (message: unknown) => void) => {
     const jobListeners = this.listeners.get(jobId);
     if (jobListeners) {
       jobListeners.delete(callback);
@@ -89,7 +96,7 @@ export class WebSocketService {
     }
   };
 
-  private notifyListeners = (jobId: string, message: WSMessage) => {
+  private notifyListeners = (jobId: string, message: unknown) => {
     const jobListeners = this.listeners.get(jobId);
     if (jobListeners) {
       jobListeners.forEach((callback) => callback(message));

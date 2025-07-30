@@ -11,7 +11,7 @@ export const withCors = (response: Response): Response => {
   return response;
 };
 
-export const jsonResponse = (data: any, options?: ResponseInit): Response => {
+export const jsonResponse = (data: unknown, options?: ResponseInit): Response => {
   return new Response(JSON.stringify(data), {
     ...options,
     headers: {

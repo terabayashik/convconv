@@ -1,4 +1,4 @@
-import { ConvertResponse } from "@convconv/shared/types/api";
+import type { ConvertResponse } from "@convconv/shared/types/api";
 
 export interface Job extends ConvertResponse {
   inputPath: string;
@@ -18,7 +18,7 @@ export class JobService {
       inputPath,
       outputPath,
     };
-    
+
     this.jobs.set(jobId, job);
     return job;
   };
@@ -30,7 +30,7 @@ export class JobService {
   updateJob = (jobId: string, updates: Partial<Job>): Job | undefined => {
     const job = this.jobs.get(jobId);
     if (!job) return undefined;
-    
+
     const updatedJob = { ...job, ...updates };
     this.jobs.set(jobId, updatedJob);
     return updatedJob;
@@ -52,7 +52,7 @@ export class JobService {
     });
   };
 
-  failJob = (jobId: string, error: string): Job | undefined => {
+  failJob = (jobId: string, _error: string): Job | undefined => {
     return this.updateJob(jobId, {
       status: "failed",
       completedAt: new Date(),
