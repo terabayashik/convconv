@@ -1,6 +1,6 @@
 {
   "name": "@convconv/shared",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "type": "module",
   "exports": {
     "./types/ffmpeg": "./src/types/ffmpeg.ts",
