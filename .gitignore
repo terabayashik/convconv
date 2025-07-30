@@ -37,6 +37,7 @@ coverage/
 tmp/
 temp/
 uploads/
+outputs/
 *.tmp
 
 # OS files

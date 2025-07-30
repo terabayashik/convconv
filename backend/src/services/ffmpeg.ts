@@ -18,49 +18,65 @@ export class FFmpegService {
 
       let stderr = "";
       let duration = 0;
+      let lastPercent = -1;
+      let lastProgressTime = 0;
 
       ffmpeg.stderr.on("data", (data) => {
-        stderr += data.toString();
+        const chunk = data.toString();
+        stderr += chunk;
 
-        // Parse duration
-        const durationMatch = stderr.match(/Duration: (\d{2}):(\d{2}):(\d{2})/);
-        if (durationMatch && duration === 0 && durationMatch[1] && durationMatch[2] && durationMatch[3]) {
-          const hours = Number.parseInt(durationMatch[1]);
-          const minutes = Number.parseInt(durationMatch[2]);
-          const seconds = Number.parseInt(durationMatch[3]);
-          duration = hours * 3600 + minutes * 60 + seconds;
+        // Parse duration if not yet found
+        if (duration === 0) {
+          const durationMatch = stderr.match(/Duration: (\d{2}):(\d{2}):(\d{2})/);
+          if (durationMatch && durationMatch[1] && durationMatch[2] && durationMatch[3]) {
+            const hours = Number.parseInt(durationMatch[1]);
+            const minutes = Number.parseInt(durationMatch[2]);
+            const seconds = Number.parseInt(durationMatch[3]);
+            duration = hours * 3600 + minutes * 60 + seconds;
+          }
         }
 
-        // Parse progress
-        const progressMatch = stderr.match(/time=(\d{2}):(\d{2}):(\d{2}).*bitrate=\s*(\S+).*speed=\s*(\S+)/);
-        if (
-          progressMatch &&
-          onProgress &&
-          progressMatch[1] &&
-          progressMatch[2] &&
-          progressMatch[3] &&
-          progressMatch[4] &&
-          progressMatch[5]
-        ) {
-          const hours = Number.parseInt(progressMatch[1]);
-          const minutes = Number.parseInt(progressMatch[2]);
-          const seconds = Number.parseInt(progressMatch[3]);
-          const currentTime = hours * 3600 + minutes * 60 + seconds;
-          const percent = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
+        // Parse progress from the latest chunk only
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          const progressMatch = line.match(/time=(\d{2}):(\d{2}):(\d{2}).*bitrate=\s*(\S+).*speed=\s*(\S+)/);
+          if (
+            progressMatch &&
+            onProgress &&
+            progressMatch[1] &&
+            progressMatch[2] &&
+            progressMatch[3] &&
+            progressMatch[4] &&
+            progressMatch[5]
+          ) {
+            const hours = Number.parseInt(progressMatch[1]);
+            const minutes = Number.parseInt(progressMatch[2]);
+            const seconds = Number.parseInt(progressMatch[3]);
+            const currentTime = hours * 3600 + minutes * 60 + seconds;
+            const percent = duration > 0 ? Math.round((currentTime / duration) * 100) : 0;
 
-          const timeMatch = progressMatch[0].match(/time=(\S+)/);
-          const progress: FFmpegProgress = {
-            percent: Math.min(percent, 100),
-            time: timeMatch?.[1] ?? "00:00:00",
-            bitrate: progressMatch[4],
-            speed: progressMatch[5],
-          };
+            // Only send progress if percentage changed or 500ms passed
+            const now = Date.now();
+            if (percent !== lastPercent || now - lastProgressTime > 500) {
+              lastPercent = percent;
+              lastProgressTime = now;
 
-          try {
-            const validatedProgress = FFmpegProgressSchema.parse(progress);
-            onProgress(validatedProgress);
-          } catch (error) {
-            console.error("Invalid progress data:", error);
+              const timeMatch = progressMatch[0].match(/time=(\S+)/);
+              const progress: FFmpegProgress = {
+                percent: Math.min(percent, 100),
+                time: timeMatch?.[1] ?? "00:00:00",
+                bitrate: progressMatch[4],
+                speed: progressMatch[5],
+              };
+
+              try {
+                const validatedProgress = FFmpegProgressSchema.parse(progress);
+                console.log(`[FFmpeg] Progress: ${percent}% (time: ${progress.time}, speed: ${progress.speed})`);
+                onProgress(validatedProgress);
+              } catch (error) {
+                console.error("Invalid progress data:", error);
+              }
+            }
           }
         }
       });

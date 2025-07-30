@@ -46,6 +46,7 @@ export class WebSocketManager {
 
     // Validate message with Zod
     const validatedMessage = WSProgressMessageSchema.parse(message);
+    console.log(`[WebSocket] Broadcasting progress for job ${jobId}: ${progress.percent}%`);
     this.sendToClients(jobId, validatedMessage);
   };
 
