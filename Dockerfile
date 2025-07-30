@@ -1,16 +1,26 @@
 # Build stage for frontend
-FROM oven/bun:1.1.38 AS frontend-builder
+# Uses Bun base image but installs Node.js for Vite compatibility
+# This is necessary because Vite uses Rollup which has platform-specific native bindings
+FROM oven/bun:1 AS frontend-builder
+
+# Install Node.js for Vite/Rollup compatibility
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy monorepo structure
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 COPY frontend/package.json ./frontend/
 COPY backend/package.json ./backend/
 COPY shared/package.json ./shared/
 
-# Install dependencies
-RUN bun install --frozen-lockfile
+# Install dependencies with Bun (handles workspace:* protocol)
+RUN bun install
 
 # Copy source code
 COPY shared ./shared
@@ -18,10 +28,12 @@ COPY frontend ./frontend
 
 # Build frontend
 WORKDIR /app/frontend
+ENV NODE_ENV=production
+# Run the build script which includes TypeScript compilation and Vite build
 RUN bun run build
 
 # Production stage
-FROM oven/bun:1.1.38
+FROM oven/bun:1
 
 # Install FFmpeg
 RUN apt-get update && \
@@ -31,14 +43,14 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy monorepo structure
-COPY package.json bun.lockb ./
+# Copy monorepo structure and lock file
+COPY package.json bun.lock ./
 COPY frontend/package.json ./frontend/
 COPY backend/package.json ./backend/
 COPY shared/package.json ./shared/
 
 # Install production dependencies
-RUN bun install --frozen-lockfile --production
+RUN bun install --production
 
 # Copy source code
 COPY shared ./shared
@@ -59,4 +71,4 @@ EXPOSE 3000
 
 # Start backend server
 WORKDIR /app/backend
-CMD ["bun", "run", "main.ts"]
+CMD ["bun", "src/main.ts"]
