@@ -28,7 +28,7 @@ export class FFmpegService {
         // Parse duration if not yet found
         if (duration === 0) {
           const durationMatch = stderr.match(/Duration: (\d{2}):(\d{2}):(\d{2})/);
-          if (durationMatch && durationMatch[1] && durationMatch[2] && durationMatch[3]) {
+          if (durationMatch?.[1] && durationMatch[2] && durationMatch[3]) {
             const hours = Number.parseInt(durationMatch[1]);
             const minutes = Number.parseInt(durationMatch[2]);
             const seconds = Number.parseInt(durationMatch[3]);

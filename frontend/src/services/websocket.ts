@@ -11,9 +11,9 @@ export class WebSocketService {
     // Use relative WebSocket URL in production
     let wsUrl = url;
     if (!wsUrl) {
-      // In development, use relative path to leverage Vite proxy
+      // In development, connect directly to backend
       if (import.meta.env.DEV) {
-        wsUrl = "ws://localhost:5173/ws";
+        wsUrl = "ws://localhost:3000/ws";
       } else {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const host = window.location.host;

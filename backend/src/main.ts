@@ -52,6 +52,10 @@ app.post("/api/preview", api.handlePreview);
 // Direct conversion endpoint (file + options in one request)
 app.post("/api/convert-direct", api.handleConvertDirect);
 
+// Test source generation endpoints
+app.post("/api/test-source", api.handleTestSource);
+app.get("/api/test-source/presets", api.handleTestSourcePresets);
+
 // WebSocket route
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 

@@ -1,4 +1,5 @@
 import { ConvertRequestSchema } from "@convconv/shared/schemas/api";
+import { TestSourceRequestSchema } from "@convconv/shared/schemas/testSource";
 import type { ApiResponse, ConvertResponse } from "@convconv/shared/types/api";
 import type { Context } from "hono";
 import type { FFmpegService } from "../services/ffmpeg";
@@ -288,6 +289,84 @@ export class ApiRouter {
     } else {
       this.jobs.failJob(jobId, result.error || "Unknown error");
       this.wsManager.broadcastError(jobId, result.error || "Unknown error");
+    }
+  };
+
+  handleTestSource = async (c: Context): Promise<Response> => {
+    try {
+      const body = await c.req.json();
+      const parseResult = TestSourceRequestSchema.safeParse(body);
+
+      if (!parseResult.success) {
+        return c.json(
+          {
+            success: false,
+            error: parseResult.error.flatten().fieldErrors,
+          } as ApiResponse<never>,
+          400,
+        );
+      }
+
+      const { options, batch } = parseResult.data;
+
+      // Dynamic import to avoid circular dependency issues
+      const { TestSourceService } = await import("../services/testSourceService");
+      const testSourceService = new TestSourceService(this.wsManager, this.jobs);
+
+      if (batch) {
+        // Batch generation
+        const jobs = await testSourceService.generateBatch(batch);
+        return c.json({
+          success: true,
+          data: {
+            jobs: jobs.map((job) => ({
+              jobId: job.jobId,
+              status: job.status,
+            })),
+          },
+        } as ApiResponse<{ jobs: Array<{ jobId: string; status: string }> }>);
+      }
+      // Single generation
+      const job = await testSourceService.generateTestSource(options);
+      return c.json({
+        success: true,
+        data: {
+          jobId: job.jobId,
+          status: job.status,
+        },
+      } as ApiResponse<{ jobId: string; status: string }>);
+    } catch (error) {
+      console.error("Test source error:", error);
+      return c.json(
+        {
+          success: false,
+          error: "Test source generation failed",
+        } as ApiResponse<never>,
+        500,
+      );
+    }
+  };
+
+  handleTestSourcePresets = async (c: Context): Promise<Response> => {
+    try {
+      // Dynamic import to avoid circular dependency issues
+      const { TestSourceService } = await import("../services/testSourceService");
+      const testSourceService = new TestSourceService(this.wsManager, this.jobs);
+      const presets = testSourceService.getPresets();
+
+      return c.json({
+        success: true,
+        data: { presets },
+      } as ApiResponse<{ presets: typeof presets }>);
+    } catch (error) {
+      console.error("Get presets error:", error);
+      return c.json(
+        {
+          success: false,
+          error: "Failed to get presets",
+        } as ApiResponse<never>,
+        500,
+      );
     }
   };
 }

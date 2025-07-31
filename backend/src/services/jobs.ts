@@ -10,16 +10,21 @@ export interface Job extends ConvertResponse {
 export class JobService {
   private jobs: Map<string, Job> = new Map();
 
-  createJob = (inputPath: string, outputPath: string): Job => {
-    const jobId = crypto.randomUUID();
+  // Method to directly set a job with a specific ID
+  setJob = (jobId: string, job: Job): void => {
+    this.jobs.set(jobId, job);
+  };
+
+  createJob = (inputPath: string, outputPath: string, jobId?: string): Job => {
+    const id = jobId || crypto.randomUUID();
     const job: Job = {
-      jobId,
+      jobId: id,
       status: "pending",
       inputPath,
       outputPath,
     };
 
-    this.jobs.set(jobId, job);
+    this.jobs.set(id, job);
     return job;
   };
 
