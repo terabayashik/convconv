@@ -2,7 +2,7 @@ import { Container, Divider, Grid, MantineProvider, Paper, Stack, Tabs, Text, Ti
 import { useEffect, useState } from "react";
 import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
-import type { WSMessage } from "@convconv/shared/schemas/websocket";
+import { WSMessageSchema } from "@convconv/shared/schemas/websocket";
 import type { FFmpegProgress } from "@convconv/shared/types/ffmpeg";
 import type { TestSourceBatch, TestSourceOptions, TestSourcePreset } from "@convconv/shared/types/testSource";
 import { IconTestPipe, IconUpload } from "@tabler/icons-react";
@@ -93,8 +93,10 @@ const App = () => {
       wsService.subscribeToJob(jobId, (rawMessage) => {
         console.log(`[WebSocket] Received message for job ${jobId}:`, rawMessage);
 
-        if (typeof rawMessage === "object" && rawMessage !== null && "type" in rawMessage) {
-          const message = rawMessage as WSMessage;
+        const parseResult = WSMessageSchema.safeParse(rawMessage);
+
+        if (parseResult.success) {
+          const message = parseResult.data;
           console.log(`[WebSocket] Message type: ${message.type}`);
 
           if (message.type === "progress" && message.data) {
@@ -127,6 +129,8 @@ const App = () => {
               return newSet;
             });
           }
+        } else {
+          console.error("[WebSocket] Invalid message format:", parseResult.error);
         }
       });
     } catch (error) {
@@ -199,8 +203,10 @@ const App = () => {
   const createJobUpdateHandler = (jobId: string) => (rawMessage: unknown) => {
     console.log(`[WebSocket] Received message for test source job ${jobId}:`, rawMessage);
 
-    if (typeof rawMessage === "object" && rawMessage !== null && "type" in rawMessage) {
-      const message = rawMessage as WSMessage;
+    const parseResult = WSMessageSchema.safeParse(rawMessage);
+
+    if (parseResult.success) {
+      const message = parseResult.data;
 
       if (message.type === "progress" && message.data) {
         setJobs((prev) => prev.map((job) => (job.id === jobId ? { ...job, progress: message.data } : job)));
@@ -229,6 +235,8 @@ const App = () => {
           return newSet;
         });
       }
+    } else {
+      console.error("[WebSocket] Invalid message format:", parseResult.error);
     }
   };
 

@@ -61,7 +61,7 @@ class TestSourceService {
       const command = this.buildFFmpegCommand(job.options, job.outputPath);
       console.log("FFmpeg command:", command.join(" "));
 
-      const ffmpeg = spawn(command[0] as string, command.slice(1)) as ChildProcess;
+      const ffmpeg = spawn(command[0] || "ffmpeg", command.slice(1)) as ChildProcess;
 
       let _stderr = "";
 
@@ -79,9 +79,9 @@ class TestSourceService {
           // Check for time-based progress (standard FFmpeg output)
           const progressMatch = line.match(/time=(\d{2}):(\d{2}):(\d{2})/);
           if (progressMatch) {
-            const hours = Number.parseInt(progressMatch[1] as string, 10);
-            const minutes = Number.parseInt(progressMatch[2] as string, 10);
-            const seconds = Number.parseInt(progressMatch[3] as string, 10);
+            const hours = Number.parseInt(progressMatch[1] || "0", 10);
+            const minutes = Number.parseInt(progressMatch[2] || "0", 10);
+            const seconds = Number.parseInt(progressMatch[3] || "0", 10);
             const currentTime = hours * 3600 + minutes * 60 + seconds;
             const percent = job.options.duration > 0 ? Math.round((currentTime / job.options.duration) * 100) : 0;
 
@@ -96,7 +96,7 @@ class TestSourceService {
 
               this.wsManager.broadcastProgress(job.jobId, {
                 percent: Math.min(percent, 100),
-                time: progressMatch[0].split("=")[1] as string,
+                time: progressMatch[0].split("=")[1] || "00:00:00",
                 bitrate: "",
                 speed: "",
               });

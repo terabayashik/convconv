@@ -10,6 +10,7 @@
     "./types/websocket": "./src/types/websocket.ts",
     "./schemas/ffmpeg": "./src/schemas/ffmpeg.ts",
     "./schemas/api": "./src/schemas/api.ts",
+    "./schemas/apiResponse": "./src/schemas/apiResponse.ts",
     "./schemas/config": "./src/schemas/config.ts",
     "./schemas/websocket": "./src/schemas/websocket.ts",
     "./schemas/testSource": "./src/schemas/testSource.ts"

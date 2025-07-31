@@ -1,3 +1,4 @@
+import { AudioTypeSchema, TestPatternSchema } from "@convconv/shared/schemas/testSource";
 import type {
   AudioType,
   TestPattern,
@@ -120,7 +121,13 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
         baseOptions: options,
         variations: {
           resolutions: batchResolutions.length > 0 ? batchResolutions : undefined,
-          patterns: batchPatterns.length > 0 ? (batchPatterns as TestPattern[]) : undefined,
+          patterns:
+            batchPatterns.length > 0
+              ? batchPatterns.filter((p): p is TestPattern => {
+                  const parsed = TestPatternSchema.safeParse(p);
+                  return parsed.success;
+                })
+              : undefined,
           formats: batchFormats.length > 0 ? batchFormats : undefined,
         },
       };
@@ -257,7 +264,14 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
             <Select
               label="音声タイプ"
               value={audioType}
-              onChange={(value) => value && setAudioType(value as AudioType)}
+              onChange={(value) => {
+                if (value) {
+                  const parsed = AudioTypeSchema.safeParse(value);
+                  if (parsed.success) {
+                    setAudioType(parsed.data);
+                  }
+                }
+              }}
               data={audioTypes}
             />
           </Grid.Col>
@@ -276,7 +290,11 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
             <Select
               label="チャンネル"
               value={audioChannel}
-              onChange={(value) => value && setAudioChannel(value as "mono" | "stereo")}
+              onChange={(value) => {
+                if (value && (value === "mono" || value === "stereo")) {
+                  setAudioChannel(value);
+                }
+              }}
               data={[
                 { value: "mono", label: "モノラル" },
                 { value: "stereo", label: "ステレオ" },
@@ -287,7 +305,14 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
             <Select
               label="サンプリングレート"
               value={sampleRate.toString()}
-              onChange={(value) => value && setSampleRate(Number(value) as 44100 | 48000 | 96000)}
+              onChange={(value) => {
+                if (value) {
+                  const num = Number(value);
+                  if (num === 44100 || num === 48000 || num === 96000) {
+                    setSampleRate(num);
+                  }
+                }
+              }}
               data={[
                 { value: "44100", label: "44.1 kHz" },
                 { value: "48000", label: "48 kHz" },
@@ -299,7 +324,14 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
             <Select
               label="ビット深度"
               value={bitDepth.toString()}
-              onChange={(value) => value && setBitDepth(Number(value) as 16 | 24)}
+              onChange={(value) => {
+                if (value) {
+                  const num = Number(value);
+                  if (num === 16 || num === 24) {
+                    setBitDepth(num);
+                  }
+                }
+              }}
               data={[
                 { value: "16", label: "16ビット" },
                 { value: "24", label: "24ビット" },

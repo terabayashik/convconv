@@ -1,6 +1,15 @@
 import { ConvertRequestSchema } from "@convconv/shared/schemas/api";
+import {
+  ApiErrorResponseSchema,
+  ConvertResponseSchema,
+  JobStatusResponseSchema,
+  PreviewResponseSchema,
+  TestSourceBatchResponseSchema,
+  TestSourcePresetsResponseSchema,
+  TestSourceResponseSchema,
+  UploadResponseSchema,
+} from "@convconv/shared/schemas/apiResponse";
 import { TestSourceRequestSchema } from "@convconv/shared/schemas/testSource";
-import type { ApiResponse, ConvertResponse } from "@convconv/shared/types/api";
 import type { Context } from "hono";
 import type { FFmpegService } from "../services/ffmpeg";
 import type { JobService } from "../services/jobs";
@@ -21,30 +30,27 @@ export class ApiRouter {
       const file = formData.get("file");
 
       if (!file || !(file instanceof File)) {
-        return c.json(
-          {
-            success: false,
-            error: "No file provided",
-          } as ApiResponse<never>,
-          400,
-        );
+        const errorResponse = ApiErrorResponseSchema.parse({
+          success: false,
+          error: "No file provided",
+        });
+        return c.json(errorResponse, 400);
       }
 
       const filePath = await this.storage.saveUploadedFile(file);
 
-      return c.json({
+      const response = UploadResponseSchema.parse({
         success: true,
         data: { filePath },
-      } as ApiResponse<{ filePath: string }>);
+      });
+      return c.json(response);
     } catch (error) {
       console.error("Upload error:", error);
-      return c.json(
-        {
-          success: false,
-          error: "Upload failed",
-        } as ApiResponse<never>,
-        500,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Upload failed",
+      });
+      return c.json(errorResponse, 500);
     }
   };
 
@@ -55,13 +61,11 @@ export class ApiRouter {
 
       // Assume file is a path string for server-side processing
       if (typeof convertRequest.file !== "string") {
-        return c.json(
-          {
-            success: false,
-            error: "Invalid file reference",
-          } as ApiResponse<never>,
-          400,
-        );
+        const errorResponse = ApiErrorResponseSchema.parse({
+          success: false,
+          error: "Invalid file reference",
+        });
+        return c.json(errorResponse, 400);
       }
 
       const outputPath = this.storage.getOutputPath(convertRequest.file, convertRequest.outputFormat);
@@ -71,22 +75,21 @@ export class ApiRouter {
       // Start conversion in background
       this.processConversion(job.jobId, convertRequest.options);
 
-      return c.json({
+      const response = ConvertResponseSchema.parse({
         success: true,
         data: {
           jobId: job.jobId,
           status: job.status,
         },
-      } as ApiResponse<ConvertResponse>);
+      });
+      return c.json(response);
     } catch (error) {
       console.error("Convert error:", error);
-      return c.json(
-        {
-          success: false,
-          error: "Conversion request failed",
-        } as ApiResponse<never>,
-        500,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Conversion request failed",
+      });
+      return c.json(errorResponse, 500);
     }
   };
 
@@ -94,27 +97,23 @@ export class ApiRouter {
     const jobId = c.req.param("jobId");
 
     if (!jobId) {
-      return c.json(
-        {
-          success: false,
-          error: "Job ID required",
-        } as ApiResponse<never>,
-        400,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Job ID required",
+      });
+      return c.json(errorResponse, 400);
     }
 
     const job = this.jobs.getJob(jobId);
     if (!job) {
-      return c.json(
-        {
-          success: false,
-          error: "Job not found",
-        } as ApiResponse<never>,
-        404,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Job not found",
+      });
+      return c.json(errorResponse, 404);
     }
 
-    return c.json({
+    const response = JobStatusResponseSchema.parse({
       success: true,
       data: {
         jobId: job.jobId,
@@ -122,7 +121,8 @@ export class ApiRouter {
         progress: job.progress,
         downloadUrl: job.downloadUrl,
       },
-    } as ApiResponse<ConvertResponse>);
+    });
+    return c.json(response);
   };
 
   handleDownload = async (c: Context): Promise<Response> => {
@@ -156,23 +156,19 @@ export class ApiRouter {
 
       // Validate required fields
       if (!file || !(file instanceof File)) {
-        return c.json(
-          {
-            success: false,
-            error: "No file provided",
-          } as ApiResponse<never>,
-          400,
-        );
+        const errorResponse = ApiErrorResponseSchema.parse({
+          success: false,
+          error: "No file provided",
+        });
+        return c.json(errorResponse, 400);
       }
 
       if (!outputFormat || typeof outputFormat !== "string") {
-        return c.json(
-          {
-            success: false,
-            error: "Output format required",
-          } as ApiResponse<never>,
-          400,
-        );
+        const errorResponse = ApiErrorResponseSchema.parse({
+          success: false,
+          error: "Output format required",
+        });
+        return c.json(errorResponse, 400);
       }
 
       // Parse options if provided
@@ -181,13 +177,11 @@ export class ApiRouter {
         try {
           parsedOptions = JSON.parse(options);
         } catch {
-          return c.json(
-            {
-              success: false,
-              error: "Invalid options JSON",
-            } as ApiResponse<never>,
-            400,
-          );
+          const errorResponse = ApiErrorResponseSchema.parse({
+            success: false,
+            error: "Invalid options JSON",
+          });
+          return c.json(errorResponse, 400);
         }
       }
 
@@ -201,22 +195,21 @@ export class ApiRouter {
       // Start conversion in background
       this.processConversion(job.jobId, parsedOptions);
 
-      return c.json({
+      const response = ConvertResponseSchema.parse({
         success: true,
         data: {
           jobId: job.jobId,
           status: job.status,
         },
-      } as ApiResponse<ConvertResponse>);
+      });
+      return c.json(response);
     } catch (error) {
       console.error("Direct convert error:", error);
-      return c.json(
-        {
-          success: false,
-          error: "Direct conversion failed",
-        } as ApiResponse<never>,
-        500,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Direct conversion failed",
+      });
+      return c.json(errorResponse, 500);
     }
   };
 
@@ -226,13 +219,11 @@ export class ApiRouter {
       const convertRequest = ConvertRequestSchema.parse(body);
 
       if (typeof convertRequest.file !== "string") {
-        return c.json(
-          {
-            success: false,
-            error: "Invalid file reference",
-          },
-          400,
-        );
+        const errorResponse = ApiErrorResponseSchema.parse({
+          success: false,
+          error: "Invalid file reference",
+        });
+        return c.json(errorResponse, 400);
       }
 
       const outputPath = this.storage.getOutputPath(convertRequest.file, convertRequest.outputFormat);
@@ -242,19 +233,18 @@ export class ApiRouter {
         options: convertRequest.options,
       });
 
-      return c.json({
+      const response = PreviewResponseSchema.parse({
         success: true,
         data: { command },
       });
+      return c.json(response);
     } catch (error) {
       console.error("Preview error:", error);
-      return c.json(
-        {
-          success: false,
-          error: "Preview failed",
-        },
-        500,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Preview failed",
+      });
+      return c.json(errorResponse, 500);
     }
   };
 
@@ -298,13 +288,11 @@ export class ApiRouter {
       const parseResult = TestSourceRequestSchema.safeParse(body);
 
       if (!parseResult.success) {
-        return c.json(
-          {
-            success: false,
-            error: parseResult.error.flatten().fieldErrors,
-          } as ApiResponse<never>,
-          400,
-        );
+        const errorResponse = ApiErrorResponseSchema.parse({
+          success: false,
+          error: parseResult.error.flatten().fieldErrors,
+        });
+        return c.json(errorResponse, 400);
       }
 
       const { options, batch } = parseResult.data;
@@ -316,7 +304,7 @@ export class ApiRouter {
       if (batch) {
         // Batch generation
         const jobs = await testSourceService.generateBatch(batch);
-        return c.json({
+        const response = TestSourceBatchResponseSchema.parse({
           success: true,
           data: {
             jobs: jobs.map((job) => ({
@@ -324,26 +312,26 @@ export class ApiRouter {
               status: job.status,
             })),
           },
-        } as ApiResponse<{ jobs: Array<{ jobId: string; status: string }> }>);
+        });
+        return c.json(response);
       }
       // Single generation
       const job = await testSourceService.generateTestSource(options);
-      return c.json({
+      const response = TestSourceResponseSchema.parse({
         success: true,
         data: {
           jobId: job.jobId,
           status: job.status,
         },
-      } as ApiResponse<{ jobId: string; status: string }>);
+      });
+      return c.json(response);
     } catch (error) {
       console.error("Test source error:", error);
-      return c.json(
-        {
-          success: false,
-          error: "Test source generation failed",
-        } as ApiResponse<never>,
-        500,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Test source generation failed",
+      });
+      return c.json(errorResponse, 500);
     }
   };
 
@@ -354,19 +342,18 @@ export class ApiRouter {
       const testSourceService = new TestSourceService(this.wsManager, this.jobs);
       const presets = testSourceService.getPresets();
 
-      return c.json({
+      const response = TestSourcePresetsResponseSchema.parse({
         success: true,
         data: { presets },
-      } as ApiResponse<{ presets: typeof presets }>);
+      });
+      return c.json(response);
     } catch (error) {
       console.error("Get presets error:", error);
-      return c.json(
-        {
-          success: false,
-          error: "Failed to get presets",
-        } as ApiResponse<never>,
-        500,
-      );
+      const errorResponse = ApiErrorResponseSchema.parse({
+        success: false,
+        error: "Failed to get presets",
+      });
+      return c.json(errorResponse, 500);
     }
   };
 }
