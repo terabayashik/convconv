@@ -164,7 +164,7 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
                 key={preset.id}
                 variant="light"
                 onClick={() => applyPreset(preset)}
-                leftIcon={<IconSettings size={16} />}
+                leftSection={<IconSettings size={16} />}
               >
                 {preset.name}
               </Button>
@@ -196,7 +196,7 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
                 alt={pattern.label}
                 style={{ width: "100%", height: "auto", borderRadius: "4px" }}
               />
-              <Text size="sm" align="center" mt="xs">
+              <Text size="sm" ta="center" mt="xs">
                 {pattern.label}
               </Text>
             </Card>
@@ -342,7 +342,7 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
 
       {/* Batch Generation */}
       <Card shadow="sm" padding="lg" radius="md">
-        <Group position="apart" mb="md">
+        <Group justify="space-between" mb="md">
           <Title order={4}>バッチ生成</Title>
           <Switch
             checked={enableBatch}
@@ -389,8 +389,8 @@ export const TestSourceGenerator = ({ onGenerate, presets = [] }: TestSourceGene
       </Card>
 
       {/* Generate Button */}
-      <Group position="right">
-        <Button size="lg" leftIcon={<IconPlayerPlay size={20} />} onClick={handleGenerate}>
+      <Group justify="flex-end">
+        <Button size="lg" leftSection={<IconPlayerPlay size={20} />} onClick={handleGenerate}>
           テストソースを生成
         </Button>
       </Group>
