@@ -1,3 +1,4 @@
+import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
@@ -22,7 +23,7 @@ class TestSourceService {
     const outputFilename = `test_${jobId}.${options.format}`;
     const outputPath = join(storageService.getOutputDir(), outputFilename);
 
-    const job: TestSourceJob = {
+    const job: TestSourceJob & { outputPath: string } = {
       jobId,
       type: "test-source",
       options,
@@ -52,15 +53,15 @@ class TestSourceService {
     return job;
   };
 
-  private runTestSourceGeneration = async (job: TestSourceJob) => {
+  private runTestSourceGeneration = async (job: TestSourceJob & { outputPath: string }) => {
     try {
       job.status = "processing";
       this.jobs.updateJob(job.jobId, { status: job.status });
 
-      const command = this.buildFFmpegCommand(job.options, job.outputPath || "");
+      const command = this.buildFFmpegCommand(job.options, job.outputPath);
       console.log("FFmpeg command:", command.join(" "));
 
-      const ffmpeg = spawn(command[0], command.slice(1));
+      const ffmpeg = spawn(command[0] as string, command.slice(1)) as ChildProcess;
 
       let _stderr = "";
 
@@ -68,7 +69,7 @@ class TestSourceService {
       let lastPercent = 0;
 
       // Progress data comes from stderr when using -progress pipe:2
-      ffmpeg.stderr.on("data", (data) => {
+      ffmpeg.stderr?.on("data", (data: Buffer) => {
         const chunk = data.toString();
         _stderr += chunk;
 
@@ -78,9 +79,9 @@ class TestSourceService {
           // Check for time-based progress (standard FFmpeg output)
           const progressMatch = line.match(/time=(\d{2}):(\d{2}):(\d{2})/);
           if (progressMatch) {
-            const hours = Number.parseInt(progressMatch[1], 10);
-            const minutes = Number.parseInt(progressMatch[2], 10);
-            const seconds = Number.parseInt(progressMatch[3], 10);
+            const hours = Number.parseInt(progressMatch[1] as string, 10);
+            const minutes = Number.parseInt(progressMatch[2] as string, 10);
+            const seconds = Number.parseInt(progressMatch[3] as string, 10);
             const currentTime = hours * 3600 + minutes * 60 + seconds;
             const percent = job.options.duration > 0 ? Math.round((currentTime / job.options.duration) * 100) : 0;
 
@@ -95,7 +96,7 @@ class TestSourceService {
 
               this.wsManager.broadcastProgress(job.jobId, {
                 percent: Math.min(percent, 100),
-                time: progressMatch[0].split("=")[1],
+                time: progressMatch[0].split("=")[1] as string,
                 bitrate: "",
                 speed: "",
               });
@@ -125,7 +126,7 @@ class TestSourceService {
         }
       });
 
-      ffmpeg.on("close", (code) => {
+      ffmpeg.on("close", (code: number | null) => {
         if (code === 0) {
           job.status = "completed";
           job.progress = 100;
@@ -147,7 +148,7 @@ class TestSourceService {
         }
       });
 
-      ffmpeg.on("error", (error) => {
+      ffmpeg.on("error", (error: Error) => {
         job.status = "failed";
         job.error = error.message;
         this.jobs.updateJob(job.jobId, {
