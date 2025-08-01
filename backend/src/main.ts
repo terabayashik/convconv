@@ -24,12 +24,21 @@ await storage.initialize();
 // Create Hono app
 const app = new Hono();
 
-// Setup CORS
+// Setup CORS for API routes
 app.use(
-  "*",
+  "/api/*",
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type"],
+  }),
+);
+
+app.use(
+  "/ws",
+  cors({
+    origin: "*",
+    allowMethods: ["GET"],
     allowHeaders: ["Content-Type"],
   }),
 );
@@ -98,18 +107,35 @@ app.get(
   }),
 );
 
-// Serve static files from public directory
-const publicPath = join(import.meta.dir, "../public");
-app.get("*", serveStatic({ root: publicPath }));
+// Serve static files
+app.use("/assets/*", serveStatic({ root: "./public" }));
+app.use("/test-patterns/*", serveStatic({ root: "./public" }));
+app.use("/*.svg", serveStatic({ root: "./public" }));
+app.use("/*.ico", serveStatic({ root: "./public" }));
 
-// Fallback for SPA
-app.get(
-  "*",
-  serveStatic({
-    root: publicPath,
-    rewriteRequestPath: () => "/index.html",
-  }),
-);
+// Serve index.html for root and all non-API routes
+app.get("/", async (c) => {
+  try {
+    const file = Bun.file("./public/index.html");
+    const content = await file.text();
+    return c.html(content);
+  } catch (error) {
+    console.error("Error serving index.html:", error);
+    return c.text("File not found", 404);
+  }
+});
+
+// SPA fallback
+app.get("*", async (c) => {
+  try {
+    const file = Bun.file("./public/index.html");
+    const content = await file.text();
+    return c.html(content);
+  } catch (error) {
+    console.error("Error serving index.html:", error);
+    return c.text("File not found", 404);
+  }
+});
 
 // Start server
 const server = Bun.serve({
